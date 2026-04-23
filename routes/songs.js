@@ -52,7 +52,7 @@ const audioStorage = new CloudinaryStorage({
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "_")
         .slice(0, 30);
-    const version = req.body.version || "demo";
+    const version = req.body?.version || req.query?.version || "demo";
     const timestamp = Date.now();
     return {
       folder: "banger/audio",
@@ -187,6 +187,7 @@ router.patch("/:id", async (req, res) => {
     notes,
     prompt,
     mood,
+    starred,
   } = req.body;
 
   title = title?.toLowerCase();
@@ -207,8 +208,9 @@ router.patch("/:id", async (req, res) => {
         notes = COALESCE($8, notes),
         prompt = COALESCE($9, prompt),
         mood = COALESCE($10, mood),
+        starred = COALESCE($11, starred),
         updated_at = NOW()
-      WHERE id = $11
+      WHERE id = $12
       RETURNING *
     `,
       [
@@ -222,6 +224,7 @@ router.patch("/:id", async (req, res) => {
         notes,
         prompt,
         mood,
+        starred,
         req.params.id,
       ],
     );
