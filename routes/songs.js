@@ -72,7 +72,14 @@ router.get("/", async (req, res) => {
       SELECT s.*, 
         a.name AS artist_name,
         g.title AS genre_title,
-        (SELECT url FROM images WHERE song_id = s.id AND type = 'cover' ORDER BY created_at DESC LIMIT 1) AS cover_url,
+        COALESCE(
+          (SELECT url FROM images WHERE song_id = s.id AND type = 'cover' ORDER BY created_at DESC LIMIT 1),
+          (SELECT i.url FROM images i 
+           JOIN song_albums sa ON sa.album_id = i.album_id 
+           WHERE sa.song_id = s.id AND i.type = 'cover' 
+           ORDER BY i.created_at DESC LIMIT 1)
+        ) AS cover_url,
+        (SELECT url FROM links WHERE song_id = s.id AND type = 'spotify' LIMIT 1) AS spotify_url,
         (SELECT COUNT(*) FROM sections WHERE song_id = s.id) AS section_count,
         (SELECT COUNT(*) FROM sections WHERE song_id = s.id AND (lyrics IS NULL OR TRIM(lyrics) = '')) AS blank_section_count
       FROM songs s
