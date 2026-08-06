@@ -74,11 +74,68 @@ router.get("/", async (req, res) => {
         a.name AS artist_name,
         g.title AS genre_title,
         COALESCE(
-          (SELECT url FROM images WHERE song_id = s.id AND type = 'cover' ORDER BY created_at DESC LIMIT 1),
-          (SELECT i.url FROM images i 
-           JOIN song_albums sa ON sa.album_id = i.album_id 
-           WHERE sa.song_id = s.id AND i.type = 'cover' 
-           ORDER BY i.created_at DESC LIMIT 1)
+          (
+            SELECT json_agg(
+              json_build_object(
+                'id', album.id,
+                'title', album.title,
+                'is_primary', membership.is_primary,
+                'track_number', membership.track_number
+              )
+              ORDER BY
+                membership.is_primary DESC,
+                membership.track_number NULLS LAST,
+                album.title
+            )
+            FROM song_albums AS membership
+            JOIN albums AS album
+              ON album.id = membership.album_id
+            WHERE membership.song_id = s.id
+          ),
+          '[]'::json
+        ) AS albums,
+        (
+          SELECT album.id
+          FROM song_albums AS membership
+          JOIN albums AS album
+            ON album.id = membership.album_id
+          WHERE membership.song_id = s.id
+            AND membership.is_primary = TRUE
+          LIMIT 1
+        ) AS primary_album_id,
+        (
+          SELECT album.title
+          FROM song_albums AS membership
+          JOIN albums AS album
+            ON album.id = membership.album_id
+          WHERE membership.song_id = s.id
+            AND membership.is_primary = TRUE
+          LIMIT 1
+        ) AS primary_album_title,
+        COALESCE(
+          (
+            SELECT image.url
+            FROM images AS image
+            WHERE image.song_id = s.id
+              AND image.type = 'cover'
+            ORDER BY
+              image.created_at DESC,
+              image.id DESC
+            LIMIT 1
+          ),
+          (
+            SELECT image.url
+            FROM images AS image
+            JOIN song_albums AS membership
+              ON membership.album_id = image.album_id
+            WHERE membership.song_id = s.id
+              AND membership.is_primary = TRUE
+              AND image.type = 'cover'
+            ORDER BY
+              image.created_at DESC,
+              image.id DESC
+            LIMIT 1
+          )
         ) AS cover_url,
         (SELECT url FROM links WHERE song_id = s.id AND type = 'spotify' LIMIT 1) AS spotify_url,
         (SELECT COUNT(*) FROM sections WHERE song_id = s.id) AS section_count,
@@ -103,11 +160,68 @@ router.get("/all", requireAdmin, async (req, res) => {
         a.name AS artist_name,
         g.title AS genre_title,
         COALESCE(
-          (SELECT url FROM images WHERE song_id = s.id AND type = 'cover' ORDER BY created_at DESC LIMIT 1),
-          (SELECT i.url FROM images i 
-           JOIN song_albums sa ON sa.album_id = i.album_id 
-           WHERE sa.song_id = s.id AND i.type = 'cover' 
-           ORDER BY i.created_at DESC LIMIT 1)
+          (
+            SELECT json_agg(
+              json_build_object(
+                'id', album.id,
+                'title', album.title,
+                'is_primary', membership.is_primary,
+                'track_number', membership.track_number
+              )
+              ORDER BY
+                membership.is_primary DESC,
+                membership.track_number NULLS LAST,
+                album.title
+            )
+            FROM song_albums AS membership
+            JOIN albums AS album
+              ON album.id = membership.album_id
+            WHERE membership.song_id = s.id
+          ),
+          '[]'::json
+        ) AS albums,
+        (
+          SELECT album.id
+          FROM song_albums AS membership
+          JOIN albums AS album
+            ON album.id = membership.album_id
+          WHERE membership.song_id = s.id
+            AND membership.is_primary = TRUE
+          LIMIT 1
+        ) AS primary_album_id,
+        (
+          SELECT album.title
+          FROM song_albums AS membership
+          JOIN albums AS album
+            ON album.id = membership.album_id
+          WHERE membership.song_id = s.id
+            AND membership.is_primary = TRUE
+          LIMIT 1
+        ) AS primary_album_title,
+        COALESCE(
+          (
+            SELECT image.url
+            FROM images AS image
+            WHERE image.song_id = s.id
+              AND image.type = 'cover'
+            ORDER BY
+              image.created_at DESC,
+              image.id DESC
+            LIMIT 1
+          ),
+          (
+            SELECT image.url
+            FROM images AS image
+            JOIN song_albums AS membership
+              ON membership.album_id = image.album_id
+            WHERE membership.song_id = s.id
+              AND membership.is_primary = TRUE
+              AND image.type = 'cover'
+            ORDER BY
+              image.created_at DESC,
+              image.id DESC
+            LIMIT 1
+          )
         ) AS cover_url,
         (SELECT url FROM links WHERE song_id = s.id AND type = 'spotify' LIMIT 1) AS spotify_url,
         (SELECT COUNT(*) FROM sections WHERE song_id = s.id) AS section_count,
