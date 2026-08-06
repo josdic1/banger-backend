@@ -372,21 +372,17 @@ router.delete("/:id", requireAdmin, async (req, res) => {
   }
 });
 
-// POST add a pinned audio version to a playlist
+// POST add a Banger to a playlist
 router.post(
   "/:id/items",
   requireAdmin,
   async (req, res) => {
     const playlistId = positiveInteger(req.params.id);
     const songId = positiveInteger(req.body.song_id);
-    const audioFileId = positiveInteger(
-      req.body.audio_file_id,
-    );
 
-    if (!playlistId || !songId || !audioFileId) {
+    if (!playlistId || !songId) {
       return res.status(400).json({
-        error:
-          "playlist ID, song_id, and audio_file_id are required",
+        error: "playlist ID and song_id are required",
       });
     }
 
@@ -430,14 +426,49 @@ router.post(
         });
       }
 
+      const { rows: songs } = await client.query(
+        `SELECT id
+         FROM songs
+         WHERE id = $1`,
+        [songId],
+      );
+
+      if (!songs.length) {
+        await client.query("ROLLBACK");
+
+        return res.status(404).json({
+          error: "Banger not found",
+        });
+      }
+
+      const { rows: existingItems } =
+        await client.query(
+          `SELECT id
+           FROM playlist_items
+           WHERE playlist_id = $1
+             AND song_id = $2
+           LIMIT 1`,
+          [playlistId, songId],
+        );
+
+      if (existingItems.length) {
+        await client.query("ROLLBACK");
+
+        return res.status(409).json({
+          error:
+            "That Banger is already in this playlist",
+        });
+      }
+
       const { rows: audioFiles } = await client.query(
-        `SELECT
-          audio.id,
-          audio.song_id
-         FROM audio_files AS audio
-         WHERE audio.id = $1
-           AND audio.song_id = $2`,
-        [audioFileId, songId],
+        `SELECT id
+         FROM audio_files
+         WHERE song_id = $1
+         ORDER BY
+           created_at DESC,
+           id DESC
+         LIMIT 1`,
+        [songId],
       );
 
       if (!audioFiles.length) {
@@ -445,9 +476,11 @@ router.post(
 
         return res.status(400).json({
           error:
-            "Selected audio version does not belong to that Banger",
+            "This Banger has no uploaded audio yet",
         });
       }
+
+      const audioFileId = audioFiles[0].id;
 
       const { rows: countRows } = await client.query(
         `SELECT COUNT(*)::integer AS item_count
@@ -515,7 +548,7 @@ router.post(
       if (error.code === "23505") {
         return res.status(409).json({
           error:
-            "That audio version is already in this playlist",
+            "That Banger is already in this playlist",
         });
       }
 
