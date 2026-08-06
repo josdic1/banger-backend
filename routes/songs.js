@@ -4,7 +4,10 @@ const db = require("../db");
 const multer = require("multer");
 const { v2: cloudinary } = require("cloudinary");
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
-const { requireAdmin } = require("../middleware/auth");
+const {
+  isAdminRequest,
+  requireAdmin,
+} = require("../middleware/auth");
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -65,6 +68,46 @@ const audioStorage = new CloudinaryStorage({
 
 const uploadImage = multer({ storage: imageStorage });
 const uploadAudio = multer({ storage: audioStorage });
+
+async function requirePublicSongOrAdmin(req, res, next) {
+  const songId = Number(req.params.id);
+
+  if (!Number.isInteger(songId) || songId <= 0) {
+    return res.status(404).json({
+      error: "Song not found",
+    });
+  }
+
+  try {
+    const { rows } = await db.query(
+      `SELECT private
+       FROM songs
+       WHERE id = $1`,
+      [songId],
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({
+        error: "Song not found",
+      });
+    }
+
+    if (
+      rows[0].private &&
+      !isAdminRequest(req)
+    ) {
+      return res.status(404).json({
+        error: "Song not found",
+      });
+    }
+
+    next();
+  } catch (error) {
+    res.status(500).json({
+      error: error.message,
+    });
+  }
+}
 
 // GET all songs (public only)
 router.get("/", async (req, res) => {
@@ -269,7 +312,7 @@ router.get("/share/:token", async (req, res) => {
 });
 
 // GET single song
-router.get("/:id", async (req, res) => {
+router.get("/:id", requirePublicSongOrAdmin, async (req, res) => {
   try {
     const { rows } = await db.query(
       `SELECT s.*, a.name AS artist_name, g.title AS genre_title
@@ -409,7 +452,7 @@ router.delete("/:id", requireAdmin, async (req, res) => {
 });
 
 // GET song genres
-router.get("/:id/genres", async (req, res) => {
+router.get("/:id/genres", requirePublicSongOrAdmin, async (req, res) => {
   try {
     const { rows } = await db.query(
       `SELECT g.* FROM genres g JOIN song_genres sg ON g.id = sg.genre_id WHERE sg.song_id = $1`,
@@ -449,7 +492,7 @@ router.delete("/:id/genres/:genreId", requireAdmin, async (req, res) => {
 });
 
 // GET song moods
-router.get("/:id/moods", async (req, res) => {
+router.get("/:id/moods", requirePublicSongOrAdmin, async (req, res) => {
   try {
     const { rows } = await db.query(
       `SELECT m.* FROM moods m JOIN song_moods sm ON m.id = sm.mood_id WHERE sm.song_id = $1`,
@@ -489,7 +532,7 @@ router.delete("/:id/moods/:moodId", requireAdmin, async (req, res) => {
 });
 
 // GET sections
-router.get("/:id/sections", async (req, res) => {
+router.get("/:id/sections", requirePublicSongOrAdmin, async (req, res) => {
   try {
     const { rows } = await db.query(
       "SELECT * FROM sections WHERE song_id = $1 ORDER BY order_index ASC",
@@ -548,7 +591,7 @@ router.delete("/:id/sections/:sectionId", requireAdmin, async (req, res) => {
 });
 
 // GET links
-router.get("/:id/links", async (req, res) => {
+router.get("/:id/links", requirePublicSongOrAdmin, async (req, res) => {
   try {
     const { rows } = await db.query("SELECT * FROM links WHERE song_id = $1", [
       req.params.id,
@@ -587,7 +630,7 @@ router.delete("/:id/links/:linkId", requireAdmin, async (req, res) => {
 });
 
 // GET audio files
-router.get("/:id/audio", async (req, res) => {
+router.get("/:id/audio", requirePublicSongOrAdmin, async (req, res) => {
   try {
     const { rows } = await db.query(
       "SELECT * FROM audio_files WHERE song_id = $1 ORDER BY created_at DESC",
@@ -634,7 +677,7 @@ router.delete("/:id/audio/:audioId", requireAdmin, async (req, res) => {
 });
 
 // GET albums for a song
-router.get("/:id/albums", async (req, res) => {
+router.get("/:id/albums", requirePublicSongOrAdmin, async (req, res) => {
   try {
     const { rows } = await db.query(
       `SELECT al.*, sa.track_number FROM albums al
@@ -670,7 +713,7 @@ router.post(
 );
 
 // GET images
-router.get("/:id/images", async (req, res) => {
+router.get("/:id/images", requirePublicSongOrAdmin, async (req, res) => {
   try {
     const { rows } = await db.query(
       "SELECT * FROM images WHERE song_id = $1 ORDER BY created_at DESC",

@@ -1,9 +1,24 @@
-const requireAdmin = (req, res, next) => {
+const isAdminRequest = (req) => {
   const token = req.headers["x-admin-token"];
-  if (!token || token !== process.env.ADMIN_TOKEN) {
-    return res.status(401).json({ error: "Unauthorized" });
+
+  return Boolean(
+    token &&
+      process.env.ADMIN_TOKEN &&
+      token === process.env.ADMIN_TOKEN,
+  );
+};
+
+const requireAdmin = (req, res, next) => {
+  if (!isAdminRequest(req)) {
+    return res.status(401).json({
+      error: "Unauthorized",
+    });
   }
+
   next();
 };
 
-module.exports = { requireAdmin };
+module.exports = {
+  isAdminRequest,
+  requireAdmin,
+};
