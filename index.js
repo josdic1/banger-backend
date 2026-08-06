@@ -33,6 +33,7 @@ const songRoutes = require("./routes/songs");
 const moodRoutes = require("./routes/moods");
 const listRoutes = require("./routes/lists");
 const albumRoutes = require("./routes/albums");
+const playlistRoutes = require("./routes/playlists");
 const dashboardRoutes = require("./routes/dashboard");
 const adminRoutes = require("./routes/admin");
 
@@ -42,6 +43,7 @@ app.use("/api/songs", songRoutes);
 app.use("/api/moods", moodRoutes);
 app.use("/api/lists", listRoutes);
 app.use("/api/albums", albumRoutes);
+app.use("/api/playlists", playlistRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/admin", adminRoutes);
 
