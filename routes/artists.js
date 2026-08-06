@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
+const { requireAdmin } = require("../middleware/auth");
 
 // GET all artists
 router.get("/", async (req, res) => {
@@ -29,7 +30,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // POST create artist
-router.post("/", async (req, res) => {
+router.post("/", requireAdmin, async (req, res) => {
   let { name, bio } = req.body;
   name = name?.toLowerCase();
   bio = bio?.toLowerCase();
@@ -44,7 +45,7 @@ router.post("/", async (req, res) => {
   }
 });
 // PATCH update artist
-router.patch("/:id", async (req, res) => {
+router.patch("/:id", requireAdmin, async (req, res) => {
   const { name, bio } = req.body;
   try {
     const { rows } = await db.query(
@@ -60,7 +61,7 @@ router.patch("/:id", async (req, res) => {
 });
 
 // DELETE artist
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAdmin, async (req, res) => {
   try {
     const { rows } = await db.query(
       "SELECT COUNT(*) FROM songs WHERE artist_id = $1",

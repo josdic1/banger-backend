@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
+const { requireAdmin } = require("../middleware/auth");
 
 // GET all values for a category
 router.get("/:category", async (req, res) => {
@@ -16,7 +17,7 @@ router.get("/:category", async (req, res) => {
 });
 
 // POST add new value to a category
-router.post("/:category", async (req, res) => {
+router.post("/:category", requireAdmin, async (req, res) => {
   const { value } = req.body;
   try {
     const { rows } = await db.query(
@@ -30,7 +31,7 @@ router.post("/:category", async (req, res) => {
 });
 
 // DELETE /api/lists/:category/:id
-router.delete("/:category/:id", async (req, res) => {
+router.delete("/:category/:id", requireAdmin, async (req, res) => {
   try {
     await db.query("DELETE FROM static_lists WHERE id = $1 AND category = $2", [
       req.params.id,

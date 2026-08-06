@@ -1,6 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
+const { requireAdmin } = require("../middleware/auth");
+
+router.use(requireAdmin);
 
 // GET /api/admin/export
 router.get("/export", async (req, res) => {
